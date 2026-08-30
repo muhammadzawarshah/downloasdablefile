@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dispatch — download log</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0F141B;--ink-2:#161E29;--ink-3:#1E2836;
+    --amber:#F5A623;--amber-bright:#FFC53D;--mint:#37D399;--muted:#7C8794;
+    --line:rgba(255,255,255,0.09);--line-strong:rgba(255,255,255,0.16);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;}
+  body{font-family:'Inter',system-ui,sans-serif;color:#E7ECF2;min-height:100vh;
+    background:radial-gradient(1200px 600px at 80% -10%,rgba(245,166,35,0.10),transparent 60%),var(--ink);
+    -webkit-font-smoothing:antialiased;}
+  .mono{font-family:'JetBrains Mono',monospace;}
+  header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 24px;border-bottom:1px solid var(--line);}
+  .brand{display:flex;align-items:center;gap:12px;}
+  .brand .dot{width:9px;height:9px;border-radius:50%;background:var(--mint);}
+  .brand h1{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:20px;letter-spacing:2px;margin:0;text-transform:uppercase;}
+  .brand small{font-size:10px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;}
+  header a{color:var(--amber);font-size:12px;letter-spacing:1px;text-decoration:none;}
+  main{max-width:1040px;margin:0 auto;padding:36px 24px 80px;}
+  .eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--amber);margin:0 0 8px;}
+  .lede{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:clamp(24px,4vw,34px);margin:0 0 8px;}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 26px;max-width:60ch;}
+  .bar{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:22px;}
+  input[type=text],input[type=password]{background:var(--ink-2);border:1px solid var(--line-strong);border-radius:8px;
+    padding:10px 12px;color:#E7ECF2;font-family:'JetBrains Mono',monospace;font-size:13px;min-width:180px;flex:1;}
+  input:focus{outline:2px solid var(--amber);outline-offset:1px;}
+  button{font-family:inherit;font-weight:600;cursor:pointer;border:0;border-radius:8px;background:var(--amber);color:#231703;padding:10px 18px;font-size:13px;}
+  button:hover{background:var(--amber-bright);}
+  .stats{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:20px;}
+  .stat{background:var(--ink-2);border:1px solid var(--line);border-radius:12px;padding:12px 18px;min-width:120px;}
+  .stat b{display:block;font-family:'Space Grotesk',sans-serif;font-size:22px;}
+  .stat span{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);}
+  .wrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--ink-2);}
+  table{border-collapse:collapse;width:100%;min-width:760px;font-size:13px;}
+  th{text-align:left;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);
+    padding:12px 14px;border-bottom:1px solid var(--line-strong);white-space:nowrap;}
+  td{padding:12px 14px;border-bottom:1px solid var(--line);vertical-align:top;}
+  tr:last-child td{border-bottom:0;}
+  td .who{font-family:'Space Grotesk',sans-serif;font-weight:700;}
+  td small{display:block;color:var(--muted);font-size:11px;margin-top:2px;word-break:break-all;}
+  .pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:10px;letter-spacing:1px;text-transform:uppercase;
+    border:1px solid var(--line-strong);color:var(--muted);}
+  .pill.mobile{border-color:var(--mint);color:var(--mint);}
+  .pill.bot{border-color:#e2564d;color:#e2564d;}
+  .empty{padding:40px;text-align:center;color:var(--muted);font-size:14px;}
+</style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <span class="dot"></span>
+      <div><h1>Dispatch</h1><small>download log</small></div>
+    </div>
+    <a href="/">← Send a file</a>
+  </header>
+  <main>
+    <p class="eyebrow">Delivery receipts</p>
+    <h2 class="lede">Who opened your links</h2>
+    <p class="sub">Every hit on a <span class="mono">/d/&lt;id&gt;</span> link, newest first — time, device and approximate location of whoever downloaded it.</p>
+
+    <div class="bar">
+      <input type="password" id="token" placeholder="admin token" autocomplete="off">
+      <input type="text" id="fileId" placeholder="filter by file id (optional)" class="mono">
+      <button id="load">Load</button>
+    </div>
+
+    <div class="stats" id="stats" hidden></div>
+    <div class="wrap"><div class="empty" id="empty">Enter your token and press Load.</div>
+      <table id="table" hidden>
+        <thead><tr><th>When</th><th>File</th><th>Device</th><th>Location</th><th>Network</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </main>
+
+<script>
+(function(){
+  const $ = s => document.querySelector(s);
+  const table = $("#table"), tbody = table.querySelector("tbody"), empty = $("#empty"), stats = $("#stats");
+  const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+  // Remembered on this device only, so a reload does not mean retyping the token.
+  $("#token").value = localStorage.getItem("dispatch-token") || "";
+  const params = new URLSearchParams(location.search);
+  if (params.get("token")) $("#token").value = params.get("token");
+  if (params.get("id")) $("#fileId").value = params.get("id");
+
+  function when(iso){
+    const d = new Date(iso);
+    if (isNaN(d)) return iso || "—";
+    const mins = Math.round((Date.now() - d) / 60000);
+    let ago = mins < 1 ? "just now" : mins < 60 ? mins + "m ago"
+      : mins < 1440 ? Math.round(mins/60) + "h ago" : Math.round(mins/1440) + "d ago";
+    return `<b>${d.toLocaleString()}</b><small>${ago}</small>`;
+  }
+
+  function row(e){
+    const place = [e.city, e.region, e.country].filter(Boolean).join(", ") || "—";
+    const hw = [e.platform, e.model].filter(Boolean).join(" ");
+    return `<tr>
+      <td>${when(e.time)}</td>
+      <td><span class="who">${esc(e.fileName || "—")}</span><small class="mono">${esc(e.fileId)}</small></td>
+      <td><span class="who">${esc(e.browser)}</span>
+          <small>${esc(e.os)}${hw ? " · " + esc(hw) : ""}</small>
+          <small><span class="pill ${esc(e.device)}">${esc(e.device)}</span></small></td>
+      <td>${esc(place)}</td>
+      <td class="mono">${esc(e.ip || "—")}<small>${esc(e.userAgent || "")}</small></td>
+    </tr>`;
+  }
+
+  function summarize(list){
+    const uniq = new Set(list.map(e => e.ip)).size;
+    const last = list.length ? new Date(list[0].time).toLocaleString() : "—";
+    stats.innerHTML = `
+      <div class="stat"><b>${list.length}</b><span>Downloads</span></div>
+      <div class="stat"><b>${uniq}</b><span>Unique IPs</span></div>
+      <div class="stat"><b>${esc(last)}</b><span>Last hit</span></div>`;
+    stats.hidden = false;
+  }
+
+  async function load(){
+    const token = $("#token").value.trim();
+    const id = $("#fileId").value.trim();
+    localStorage.setItem("dispatch-token", token);
+    const qs = new URLSearchParams();
+    if (token) qs.set("token", token);
+    if (id) qs.set("id", id);
+    empty.textContent = "Loading…"; empty.hidden = false; table.hidden = true;
+    try {
+      const res = await fetch("/api/downloads?" + qs);
+      const data = await res.json();
+      if (!res.ok) { empty.textContent = data.error || "Could not load log"; stats.hidden = true; return; }
+      const list = data.downloads || [];
+      summarize(list);
+      if (!list.length) { empty.textContent = "No downloads recorded yet."; return; }
+      tbody.innerHTML = list.map(row).join("");
+      empty.hidden = true; table.hidden = false;
+    } catch (err) {
+      empty.textContent = "Network error: " + err.message;
+    }
+  }
+
+  $("#load").addEventListener("click", load);
+  document.addEventListener("keydown", e => { if (e.key === "Enter") load(); });
+  if ($("#token").value) load();
+})();
+</script>
+</body>
+</html>
